@@ -46,10 +46,7 @@ defaults = {
     "team_a": (None, None),     # (player_id, player_id)
     "team_b": (None, None),
     "win_target": 31,
-    "show_round_panel": False,
-    "show_qaid_panel": False,
     "winner": None,
-    "prefill_players": False,
 }
 for key, value in defaults.items():
     if key not in st.session_state:
@@ -78,8 +75,49 @@ def reset_for_new_game():
     st.session_state.rounds = []
     st.session_state.game_id = None
     st.session_state.winner = None
-    st.session_state.show_round_panel = False
-    st.session_state.show_qaid_panel = False
+
+
+# ============================================================
+# MODAL DIALOGS (pop up over the page, instead of pushing content down)
+# ============================================================
+
+@st.dialog("Add Round Score")
+def add_round_dialog(a_label, b_label):
+    pts_a = st.number_input(a_label, step=1, value=None, placeholder="0", key="pts_a")
+    pts_b = st.number_input(b_label, step=1, value=None, placeholder="0", key="pts_b")
+    c1, c2 = st.columns(2)
+    if c1.button("Confirm", type="primary", use_container_width=True, key="btn_confirm_round"):
+        final_a = int(pts_a) if pts_a is not None else 0
+        final_b = int(pts_b) if pts_b is not None else 0
+        round_row = db.add_round(
+            st.session_state.game_id,
+            len(st.session_state.rounds) + 1,
+            final_a, final_b,
+        )
+        st.session_state.rounds.append(round_row)
+        st.rerun()
+    if c2.button("Cancel", use_container_width=True, key="btn_cancel_round"):
+        st.rerun()
+
+
+@st.dialog("Qaid — Who Got Caught?")
+def qaid_dialog(a_label, b_label):
+    qaid_choice = st.radio("Team", [a_label, b_label])
+    c1, c2 = st.columns(2)
+    if c1.button("Confirm", type="primary", use_container_width=True, key="btn_confirm_qaid"):
+        cheating_team = "A" if qaid_choice == a_label else "B"
+        round_row = db.add_round(
+            st.session_state.game_id,
+            len(st.session_state.rounds) + 1,
+            -5 if cheating_team == "A" else 0,
+            -5 if cheating_team == "B" else 0,
+            is_qaid=True,
+            qaid_team=cheating_team,
+        )
+        st.session_state.rounds.append(round_row)
+        st.rerun()
+    if c2.button("Cancel", use_container_width=True, key="btn_cancel_qaid"):
+        st.rerun()
 
 
 # ============================================================
@@ -221,78 +259,14 @@ with tab_game:
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("➕ Add Round", use_container_width=True, key="btn_add_round"):
-                st.session_state.show_round_panel = True
-                st.session_state.show_qaid_panel = False
+                add_round_dialog(f"{a_name1} & {a_name2}", f"{b_name1} & {b_name2}")
         with col2:
             if st.button("🚩 Qaid", use_container_width=True, key="btn_qaid"):
-                st.session_state.show_qaid_panel = True
-                st.session_state.show_round_panel = False
+                qaid_dialog(f"{a_name1} & {a_name2}", f"{b_name1} & {b_name2}")
         with col3:
             if st.button("↺ Undo", use_container_width=True, disabled=len(st.session_state.rounds) == 0, key="btn_undo"):
                 last = st.session_state.rounds.pop()
                 db.delete_round(last["id"])
-                st.rerun()
-
-        # --- Add Round panel ---
-        if st.session_state.show_round_panel:
-            with st.form("add_round_form"):
-                st.markdown("**Add round score**")
-                c1, c2 = st.columns(2)
-                with c1:
-                    pts_a = st.number_input(
-                        f"{a_name1} & {a_name2}", step=1, value=None,
-                        placeholder="0", key="pts_a",
-                    )
-                with c2:
-                    pts_b = st.number_input(
-                        f"{b_name1} & {b_name2}", step=1, value=None,
-                        placeholder="0", key="pts_b",
-                    )
-                fc1, fc2 = st.columns(2)
-                confirm = fc1.form_submit_button("Confirm", type="primary", use_container_width=True, key="btn_confirm_round")
-                cancel = fc2.form_submit_button("Cancel", use_container_width=True, key="btn_cancel_round")
-
-            if confirm:
-                final_a = int(pts_a) if pts_a is not None else 0
-                final_b = int(pts_b) if pts_b is not None else 0
-                round_row = db.add_round(
-                    st.session_state.game_id,
-                    len(st.session_state.rounds) + 1,
-                    final_a, final_b,
-                )
-                st.session_state.rounds.append(round_row)
-                st.session_state.show_round_panel = False
-                st.rerun()
-            if cancel:
-                st.session_state.show_round_panel = False
-                st.rerun()
-
-        # --- Qaid panel ---
-        if st.session_state.show_qaid_panel:
-            with st.form("qaid_form"):
-                st.markdown("**Who got caught cheating?**")
-                qaid_choice = st.radio(
-                    "Team", [f"{a_name1} & {a_name2}", f"{b_name1} & {b_name2}"],
-                )
-                fc1, fc2 = st.columns(2)
-                confirm_q = fc1.form_submit_button("Confirm", type="primary", use_container_width=True, key="btn_confirm_qaid")
-                cancel_q = fc2.form_submit_button("Cancel", use_container_width=True, key="btn_cancel_qaid")
-
-            if confirm_q:
-                cheating_team = "A" if qaid_choice.startswith(a_name1) else "B"
-                round_row = db.add_round(
-                    st.session_state.game_id,
-                    len(st.session_state.rounds) + 1,
-                    -5 if cheating_team == "A" else 0,
-                    -5 if cheating_team == "B" else 0,
-                    is_qaid=True,
-                    qaid_team=cheating_team,
-                )
-                st.session_state.rounds.append(round_row)
-                st.session_state.show_qaid_panel = False
-                st.rerun()
-            if cancel_q:
-                st.session_state.show_qaid_panel = False
                 st.rerun()
 
         # --- Round history ---

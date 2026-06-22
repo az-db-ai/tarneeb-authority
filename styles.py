@@ -26,16 +26,24 @@ CSS = """
     --muted: #8C6F62;
 }
 
+/* Slightly larger base font size site-wide — most rem-based sizes below
+   scale automatically from this, since 1rem = the html font-size. */
+html {
+    font-size: 19px;
+}
+
 /* App background + default body text (sits directly on the dark bg) */
 .stApp {
     background-color: var(--bg);
     color: var(--text-light);
     font-family: 'Inter', sans-serif;
+    font-size: 1.05rem;
 }
 
 .stApp p, .stApp label, .stApp span, .stApp h1, .stApp h2, .stApp h3,
 .stApp .stMarkdown, .stApp .stRadio, .stApp .stSelectbox {
     color: var(--text-light);
+    font-size: 1.05rem;
 }
 
 /* Arabic app title */
@@ -89,8 +97,9 @@ CSS = """
 div.stButton > button, div.stFormSubmitButton > button {
     border-radius: 12px;
     font-weight: 600;
+    font-size: 1.05rem;
     border: none;
-    padding: 0.6rem 1rem;
+    padding: 0.7rem 1rem;
     color: #FFFFFF;
     background-color: var(--gray);
 }
@@ -143,7 +152,7 @@ div.stButton > button[kind="primary"] {
     padding: 0.5rem 0.9rem;
     margin-bottom: 0.4rem;
     font-family: 'Space Grotesk', monospace;
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     border: 1px solid var(--border);
     color: var(--text-dark);
 }
